@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"fmt"
 	"github.com/nnqq/eth-parser/pkg/eth"
 	"github.com/nnqq/eth-parser/pkg/logger"
 	"github.com/nnqq/eth-parser/pkg/store"
@@ -24,10 +25,11 @@ type Prs struct {
 
 func NewParser(logger logger.Printer, store store.Store, client *eth.Client, startBlock int) *Prs {
 	return &Prs{
-		logger:     logger,
-		store:      store,
-		client:     client,
-		startBlock: startBlock,
+		logger:       logger,
+		store:        store,
+		client:       client,
+		startBlock:   startBlock,
+		gracefulStop: make(chan struct{}),
 	}
 }
 
@@ -45,40 +47,45 @@ func (p *Prs) GetTransactions(address string) []eth.Transaction {
 }
 
 func (p *Prs) Stop(_ context.Context) {
-	p.logger.Printf("signal to stop sent, waiting last iteration finish and stop...")
-	p.gracefulStop <- struct{}{}
+	p.logger.Printf("signal to stop sent, waiting last iteration finish and stop")
 	close(p.gracefulStop)
 }
 
-func (p *Prs) Run(ctx context.Context) {
+func (p *Prs) Run(ctx context.Context) error {
 	if p.store.GetCurrentBlock() == 0 {
 		p.store.SetCurrentBlock(p.startBlock)
 	}
 
-	t := time.NewTicker(5 * time.Second)
+	t := time.NewTicker(time.Second)
 	defer t.Stop()
 
 	for {
 		select {
 		case <-p.gracefulStop:
 			p.logger.Printf("graceful stop exit")
-			return
+			return nil
 		case <-ctx.Done():
 			p.logger.Printf("context cancelled (err: %w)", ctx.Err())
-			return
+			return ctx.Err()
 		case <-t.C:
-			p.doNextBlock(ctx)
+			err := p.doNextBlock(ctx)
+			if err != nil {
+				return fmt.Errorf("p.doNextBlock: %w", err)
+			}
 		}
 	}
 }
 
-func (p *Prs) doNextBlock(ctx context.Context) {
+func (p *Prs) doNextBlock(ctx context.Context) error {
 	current := p.store.GetCurrentBlock()
 
-	block, err := p.client.GetBlockByNumber(ctx, current)
+	block, exists, err := p.client.GetBlockByNumber(ctx, current)
+	if !exists {
+		p.logger.Printf("no new blocks yet (height: %d)", current)
+		return nil
+	}
 	if err != nil {
-		p.logger.Printf("no new blocks yet (height: %d) (err: %w)", current, err)
-		return
+		return fmt.Errorf("p.client.GetBlockByNumber: %w", err)
 	}
 
 	for _, tx := range block.Transactions {
@@ -98,4 +105,5 @@ func (p *Prs) doNextBlock(ctx context.Context) {
 
 	p.logger.Printf("block done (height: %d)", current)
 	p.store.SetCurrentBlock(current + 1)
+	return nil
 }

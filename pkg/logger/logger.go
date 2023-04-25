@@ -1,6 +1,9 @@
 package logger
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 type Printer interface {
 	Printf(format string, v ...interface{})
@@ -20,6 +23,6 @@ func NewLogger(pkg string, enabled bool) *Logger {
 
 func (l *Logger) Printf(format string, v ...interface{}) {
 	if l.enabled {
-		log.Printf("%s: "+format+"\n", l.pkg, v)
+		log.Println(l.pkg + ": " + fmt.Sprintf(format, v...))
 	}
 }

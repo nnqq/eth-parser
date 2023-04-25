@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eth-parser
+  labels:
+    app: eth-parser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eth-parser
+  template:
+    metadata:
+      labels:
+        app: eth-parser
+    spec:
+      imagePullSecrets:
+        - name: ghcr
+      containers:
+        - name: eth-parser
+          image: busybox
+          command:
+            - /app/servicebin
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 15m
+              memory: 25Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          env:
+            - name: RPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: rpcUrl
+                  name: eth-parser
+            - name: START_BLOCK
+              valueFrom:
+                configMapKeyRef:
+                  key: startBlock
+                  name: eth-parser
+            - name: HTTP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: httpHost
+                  name: eth-parser
+            - name: HTTP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: httpPort
+                  name: eth-parser
+            - name: DEBUG_LOGS
+              valueFrom:
+                configMapKeyRef:
+                  key: debugLogs
+                  name: eth-parser

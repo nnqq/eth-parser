@@ -41,7 +41,11 @@ func main() {
 			log.Fatal(fmt.Errorf("srv.Run: %w", e))
 		}
 	}()
-	go prs.Run(ctx)
-
+	go func() {
+		e := prs.Run(ctx)
+		if e != nil {
+			log.Fatal(fmt.Errorf("prs.Run: %w", e))
+		}
+	}()
 	graceful.HandleSignals(ctx, srv.Stop, prs.Stop)
 }

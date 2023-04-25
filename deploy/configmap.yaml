@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eth-parser
+  namespace: eth-parser
+data:
+  rpcUrl: "https://cloudflare-eth.com/"
+  startBlock: "17125039"
+  httpHost: "0.0.0.0"
+  httpPort: "80"
+  debugLogs: "true"
