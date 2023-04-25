@@ -28,6 +28,7 @@ func NewServer(logger logger.Printer, parser parser.Parser, host string, port in
 	mux.HandleFunc("/current-block", s.currentBlock)
 	mux.HandleFunc("/subscribe", s.subscribe)
 	mux.HandleFunc("/transactions", s.transactions)
+	mux.HandleFunc("/healthz", s.healthz)
 
 	s.srv = &http.Server{
 		Addr:    net.JoinHostPort(host, strconv.Itoa(port)),
