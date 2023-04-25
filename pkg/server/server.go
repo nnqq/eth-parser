@@ -61,6 +61,15 @@ func (s *Server) currentBlock(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
+	type res struct {
+		Success bool `json:"success"`
+	}
+	s.handle(w, r, "healthz", http.MethodGet, res{
+		Success: true,
+	})
+}
+
 func (s *Server) subscribe(w http.ResponseWriter, r *http.Request) {
 	type req struct {
 		Address string `json:"address"`
