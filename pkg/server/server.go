@@ -30,10 +30,12 @@ func NewServer(logger logger.Printer, parser parser.Parser, host string, port in
 	mux.HandleFunc("/transactions", s.transactions)
 	mux.HandleFunc("/healthz", s.healthz)
 
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	s.srv = &http.Server{
-		Addr:    net.JoinHostPort(host, strconv.Itoa(port)),
+		Addr:    addr,
 		Handler: mux,
 	}
+	s.logger.Printf("http server init on %s", addr)
 
 	return s
 }
@@ -47,10 +49,12 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) Stop(ctx context.Context) {
+	s.logger.Printf("http graceful shutdown...")
 	err := s.srv.Shutdown(ctx)
 	if err != nil {
 		s.logger.Printf("s.srv.Shutdown: %v", err)
 	}
+	s.logger.Printf("exit")
 }
 
 func (s *Server) currentBlock(w http.ResponseWriter, r *http.Request) {
@@ -97,27 +101,18 @@ func (s *Server) subscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) transactions(w http.ResponseWriter, r *http.Request) {
-	type req struct {
-		Address string `json:"address"`
-	}
 	type res struct {
 		Transactions []eth.Transaction `json:"transactions"`
 	}
 
-	defer func() {
-		_ = r.Body.Close()
-	}()
-
-	var reqBody req
-	err := json.NewDecoder(r.Body).Decode(&reqBody)
-	if err != nil {
-		s.logger.Printf("transactions: json.NewDecoder: %v", err)
+	addr := r.URL.Query().Get("address")
+	if addr == "" {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
 	s.handle(w, r, "transactions", http.MethodGet, res{
-		Transactions: s.parser.GetTransactions(reqBody.Address),
+		Transactions: s.parser.GetTransactions(addr),
 	})
 }
 

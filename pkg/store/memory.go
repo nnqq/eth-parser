@@ -2,6 +2,7 @@ package store
 
 import (
 	"github.com/nnqq/eth-parser/pkg/eth"
+	"strings"
 	"sync"
 )
 
@@ -38,26 +39,27 @@ func (m *Memory) SetSubscribe(address string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.subscriptions[address] = true
+	m.subscriptions[strings.ToLower(address)] = true
 }
 
 func (m *Memory) GetSubscribe(address string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.subscriptions[address]
+	return m.subscriptions[strings.ToLower(address)]
 }
 
 func (m *Memory) AppendTx(address string, tx eth.Transaction) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.txs[address] = append(m.txs[address], tx)
+	low := strings.ToLower(address)
+	m.txs[low] = append(m.txs[low], tx)
 }
 
 func (m *Memory) GetTxs(address string) []eth.Transaction {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.txs[address]
+	return m.txs[strings.ToLower(address)]
 }

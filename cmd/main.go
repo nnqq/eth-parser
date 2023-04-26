@@ -11,6 +11,7 @@ import (
 	"github.com/nnqq/eth-parser/pkg/server"
 	"github.com/nnqq/eth-parser/pkg/store"
 	"log"
+	"sync"
 )
 
 func main() {
@@ -35,17 +36,25 @@ func main() {
 		cfg.HTTPPort,
 	)
 
+	wg := sync.WaitGroup{}
+	wg.Add(3)
 	go func() {
+		defer wg.Done()
+		e := prs.Run(ctx)
+		if e != nil {
+			log.Fatal(fmt.Errorf("prs.Run: %w", e))
+		}
+	}()
+	go func() {
+		defer wg.Done()
 		e := srv.Run()
 		if e != nil {
 			log.Fatal(fmt.Errorf("srv.Run: %w", e))
 		}
 	}()
 	go func() {
-		e := prs.Run(ctx)
-		if e != nil {
-			log.Fatal(fmt.Errorf("prs.Run: %w", e))
-		}
+		defer wg.Done()
+		graceful.HandleSignals(ctx, srv.Stop, prs.Stop)
 	}()
-	graceful.HandleSignals(ctx, srv.Stop, prs.Stop)
+	wg.Wait()
 }

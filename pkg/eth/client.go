@@ -10,6 +10,10 @@ import (
 	"strconv"
 )
 
+type API interface {
+	GetBlockByNumber(ctx context.Context, number int) (Block, bool, error)
+}
+
 type Client struct {
 	url string
 }

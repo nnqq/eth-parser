@@ -18,12 +18,12 @@ type Parser interface {
 type Prs struct {
 	logger       logger.Printer
 	store        store.Store
-	client       *eth.Client
+	client       eth.API
 	startBlock   int
 	gracefulStop chan struct{}
 }
 
-func NewParser(logger logger.Printer, store store.Store, client *eth.Client, startBlock int) *Prs {
+func NewParser(logger logger.Printer, store store.Store, client eth.API, startBlock int) *Prs {
 	return &Prs{
 		logger:       logger,
 		store:        store,
@@ -47,7 +47,8 @@ func (p *Prs) GetTransactions(address string) []eth.Transaction {
 }
 
 func (p *Prs) Stop(_ context.Context) {
-	p.logger.Printf("signal to stop sent, waiting last iteration finish and stop")
+	p.logger.Printf("waiting last iteration finish...")
+	p.gracefulStop <- struct{}{}
 	close(p.gracefulStop)
 }
 
@@ -62,7 +63,7 @@ func (p *Prs) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-p.gracefulStop:
-			p.logger.Printf("graceful stop exit")
+			p.logger.Printf("exit")
 			return nil
 		case <-ctx.Done():
 			p.logger.Printf("context cancelled (err: %w)", ctx.Err())
@@ -80,12 +81,12 @@ func (p *Prs) doNextBlock(ctx context.Context) error {
 	current := p.store.GetCurrentBlock()
 
 	block, exists, err := p.client.GetBlockByNumber(ctx, current)
+	if err != nil {
+		return fmt.Errorf("p.client.GetBlockByNumber: %w", err)
+	}
 	if !exists {
 		p.logger.Printf("no new blocks yet (height: %d)", current)
 		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("p.client.GetBlockByNumber: %w", err)
 	}
 
 	for _, tx := range block.Transactions {
@@ -94,7 +95,7 @@ func (p *Prs) doNextBlock(ctx context.Context) error {
 			if p.store.GetSubscribe(addr) {
 				p.store.AppendTx(addr, tx)
 				p.logger.Printf(
-					"new transaction saved (height: %d) (addr: %p) (hash: %p)",
+					"new transaction saved (height: %d) (addr: %s) (hash: %s)",
 					current,
 					addr,
 					tx.Hash,
