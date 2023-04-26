@@ -24,7 +24,7 @@ All environment variables are required.
 
 ### Examples
 
-API deployed to `https://eth-parser.shopgrip.ru` (testnet Sepolia)
+API deployed to `https://eth-parser.shopgrip.ru` (testnet Sepolia).
 
 ```
 curl --location --request GET 'https://eth-parser.shopgrip.ru/current-block'
